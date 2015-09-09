@@ -18,39 +18,41 @@ describe('Model', function () {
 
     it('should allow extending of a model', function () {
       var ModelA = Model.define({
-        name: 'ModelA',
-        abstract: true,
-        properties: {
-          'strA': { type: 'string' }
-        }
-      });
-      ModelA.foo = function () {
-        return 'foo';
-      };
-      ModelA.prototype.blah = function () {
-        return 'blah';
-      };
-      var ModelB = Model.define({
-        name: 'ModelB',
-        collectionUri: '/db/modelb',
-        properties: {
-          'strB': { type: 'string' }
-        }
-      }, ModelA);
-      ModelB.bar = function () {
-        return 'bar';
-      };
-      expect(ModelB.prototype.__definition.name).to.equal('ModelB');
-      var myModelB = new ModelB({
-        strA: 'abc',
-        strB: '123'
-      });
-      // expect(myModelB).to.be.an.instanceof(ModelA);
-      expect(ModelB.bar()).to.equal('bar');
-      expect(myModelB.strB).to.equal('123');
-      expect(ModelB.foo()).to.equal('foo');
-      expect(myModelB.strA).to.equal('abc');
-      expect(myModelB.blah()).to.equal('blah');
+          name: 'ModelA',
+          abstract: true,
+          collectionUri: '/db/mocha_test',
+          properties: {
+            _type: { type: 'string', enum: ['A', 'B'], default: 'A'},
+            strA: { type: 'string' }
+          }
+        });
+        ModelA.foo = function () {
+          return 'foo';
+        };
+        ModelA.prototype.blah = function () {
+          return 'blah';
+        };
+        var ModelB = Model.define({
+          name: 'ModelB',
+          where: { _type: 'B' },
+          properties: {
+            _type: { type: 'string', default: 'B', valid: 'B' },
+            strB: { type: 'string' }
+          }
+        }, ModelA);
+        ModelB.bar = function () {
+          return 'bar';
+        };
+        var myModelB = new ModelB({
+          strA: 'abc',
+          strB: '123'
+        });
+        expect(myModelB).to.be.an.instanceof(ModelA);
+        expect(ModelB.bar()).to.equal('bar');
+        expect(myModelB.strB).to.equal('123');
+        expect(ModelB.foo()).to.equal('foo');
+        expect(myModelB.strA).to.equal('abc');
+        expect(myModelB.blah()).to.equal('blah');
     });
 
     describe('#constructor', function () {
