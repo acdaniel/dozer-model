@@ -390,6 +390,16 @@ describe('Model', function () {
         })
         .done(null, done);
     });
+
+    it('should return null if no document is found', function (done) {
+      FullTestModel.findOne({ _id: 'asdfasdfasdf' })
+        .then(function (doc) {
+          expect(doc).to.not.exist;
+          done();
+        })
+        .done(null, done);
+    });
+
   });
 
   describe('.remove() [static]', function () {
