@@ -21,7 +21,7 @@
     "bloody-immutable-date": "^1.0.2",
     "bson": "^0.4.11",
     "debug": "^2.1.1",
-    "dozer": "^2.1.0",
+    "dozer-client": "^1.0.0",
     "etag": "^1.7.0",
     "i": "^0.3.2",
     "immu": "^1.2.2",
