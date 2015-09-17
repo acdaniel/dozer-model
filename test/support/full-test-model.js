@@ -1,31 +1,26 @@
+var format = require('string-template');
 var Model = require('../../lib/model');
 
 var FullTestModel = Model.define({
   name: 'FullTestModel',
   collectionUri: '/db/mocha_test',
   properties: {
-    str: { type: 'string', 'default': '' },
+    str: { type: 'string', required: true },
     obj: {
       type: 'object',
       properties: {
         prop1: { type: 'string' },
         prop2: { type: 'string' },
-        propv: {
-          type: 'virtual',
-          get: function () {
-            return this.prop1 + '.' + this.prop2;
-          },
-          set: function (value) {
-            var parts = value.split('.');
-            this.prop1 = parts[0];
-            this.prop2 = parts[1];
-          }
-        },
         deep: {
           type: 'object',
           properties: {
-            blah: { type: 'string' }
+            blah: { type: 'string'}
           }
+        }
+      },
+      virtuals: {
+        propv: function () {
+          return this.prop1 + '.' + this.prop2;
         }
       }
     },
@@ -33,25 +28,18 @@ var FullTestModel = Model.define({
     arr: { type: 'array' },
     num: { type: 'number', default: 0 },
     bool: { type: 'boolean', default: false },
-    any: { type: 'any' },
-    virt: {
-      type: 'virtual',
-      get: function () {
-        return this.str + '.virtual';
-      },
-      set: function (value) {
-        var parts = value.split('.');
-        this.str = parts[0];
-      }
+    any: { type: 'any' }
+  },
+  virtuals: {
+    virt: function () {
+      return this.str + '.virtual';
     }
   },
-  initialize: function () {
-    this.bool = true;
+  methods: {
+    fooString: function (message) {
+      return format(message, this);
+    }
   }
 });
-
-FullTestModel.prototype.fooString = function () {
-  this.str += '(foo)';
-};
 
 module.exports = FullTestModel;
