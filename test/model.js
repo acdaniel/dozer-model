@@ -1,6 +1,5 @@
 var chai = require('chai');
-var util = require('util');
-var dozer = require('dozer').client;
+var dozer = require('dozer-client');
 
 chai.use(require('chai-datetime'));
 var expect = chai.expect;
@@ -8,134 +7,143 @@ var expect = chai.expect;
 describe('Model', function () {
 
   var Model = require('../lib/model');
+  var Immutable = require('../lib/immutable');
   var FullTestModel = require('./support/full-test-model');
 
   describe('.define()', function () {
 
-    it('should return prototype with static methods defined', function () {
-      expect(FullTestModel).to.include.keys('find', 'findOne', 'remove');
-    });
-
-    it('should allow extending of a model', function () {
+    it('should return a model definition', function () {
       var ModelA = Model.define({
-          name: 'ModelA',
-          abstract: true,
-          collectionUri: '/db/mocha_test',
-          properties: {
-            _type: { type: 'string', enum: ['A', 'B'], default: 'A'},
-            strA: { type: 'string' }
+        collectionUri: '/db/mocha_test',
+        properties: {
+          _type: { type: 'string', enum: ['A', 'B'], default: 'A'},
+          strA: { type: 'string' }
+        },
+        methods: {
+          blah: function () {
+            return 'blah';
           }
-        });
-        ModelA.foo = function () {
-          return 'foo';
-        };
-        ModelA.prototype.blah = function () {
-          return 'blah';
-        };
-        var ModelB = Model.define({
-          name: 'ModelB',
-          where: { _type: 'B' },
-          properties: {
-            _type: { type: 'string', default: 'B', valid: 'B' },
-            strB: { type: 'string' }
-          }
-        }, ModelA);
-        ModelB.bar = function () {
-          return 'bar';
-        };
-        var myModelB = new ModelB({
-          strA: 'abc',
-          strB: '123'
-        });
-        expect(myModelB).to.be.an.instanceof(ModelA);
-        expect(ModelB.bar()).to.equal('bar');
-        expect(myModelB.strB).to.equal('123');
-        expect(ModelB.foo()).to.equal('foo');
-        expect(myModelB.strA).to.equal('abc');
-        expect(myModelB.blah()).to.equal('blah');
-    });
-
-    describe('#constructor', function () {
-
-      it('should have run initialized', function () {
-        var newModel = new FullTestModel({
-          str: 'this is a string'
-        });
-        expect(newModel.str).to.equal('this is a string');
-        expect(newModel.bool).to.be.true;
+        }
       });
-
+      expect(ModelA.create).to.exist;
+      expect(ModelA.extend).to.exist;
+      expect(ModelA.count).to.exist;
+      expect(ModelA.find).to.exist;
+      expect(ModelA.findOne).to.exist;
+      expect(ModelA.remove).to.exist;
     });
 
   });
 
-  describe('.markAsModified(), .isModified()', function () {
+  describe('.get', function () {
 
-    var model;
-
-    before(function () {
-      model = new FullTestModel({
-        str: 'test string',
-        obj: { prop1: 'foo', prop2: 'bar' }
+    it('should return a value at the given path', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
       });
-    });
-
-    it('should except a string path', function () {
-      model.markAsModified('str');
-      model.markAsModified('obj.deep.blah');
-
-      expect(model.isModified('str')).to.be.true;
-      expect(model.isModified('obj')).to.true;
-      expect(model.isModified('obj.deep')).to.true;
-      expect(model.isModified('obj.deep.blah')).to.true;
-    });
-
-    it('should except an array path', function () {
-      model.markAsModified(['str']);
-      model.markAsModified(['obj', 'deep', 'blah']);
-
-      expect(model.isModified(['str'])).to.be.true;
-      expect(model.isModified(['obj'])).to.true;
-      expect(model.isModified(['obj', 'deep'])).to.true;
-      expect(model.isModified(['obj', 'deep', 'blah'])).to.true;
+      expect(model.get('str')).to.equal('foo');
+      expect(model.get('obj.deep.blah')).to.equal('blah');
     });
 
   });
 
-  describe('.before()', function () {
+  describe('.set()', function () {
 
-    it('should allow code exectution before a method', function () {
-      var model = new FullTestModel({ str: '' });
-      expect(model.str).to.equal('');
-      model.fooString();
-      expect(model.str).to.equal('(foo)');
-
-      model.str = '';
-      model.before('fooString', function () {
-        this.str = 'bar';
+    it('should except a path and value and return a new model', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
       });
-      expect(model.str).to.equal('');
-      model.fooString();
-      expect(model.str).to.equal('bar(foo)');
+      var model2 = model.set('obj.deep.blah', 'boo');
+      expect(FullTestModel.isA(model2)).to.be.true;
+      var m = model.toObject();
+      var m2 = model2.toObject();
+      expect(model.get('obj.deep.blah')).to.equal('blah');
+      expect(model2.get('obj.deep.blah')).to.equal('boo');
+    });
+
+    it('should except an object of values to assign and return a new model', function () {
+      var model = FullTestModel.create({});
+      var model2 = model.set({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      expect(FullTestModel.isA(model2)).to.be.true;
+      expect(model.get('str')).to.not.exist;
+      expect(model.get('obj.deep.blah')).to.not.exist;
+      expect(model2.get('str')).to.equal('foo');
+      expect(model2.get('obj.deep.blah')).to.equal('blah');
     });
 
   });
 
-  describe('.after()', function () {
+  describe('.del()', function () {
 
-    it('should allow code exectution after a method', function () {
-      var model = new FullTestModel({ str: '' });
-      expect(model.str).to.equal('');
-      model.fooString();
-      expect(model.str).to.equal('(foo)');
-
-      model.str = '';
-      model.after('fooString', function () {
-        this.str += 'bar';
+    it('should delete the var at the given path and return a new model', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
       });
-      expect(model.str).to.equal('');
-      model.fooString();
-      expect(model.str).to.equal('(foo)bar');
+      var model2 = model.del('str');
+      var model3 = model.del('obj.deep.blah');
+      expect(FullTestModel.isA(model2)).to.be.true;
+      expect(FullTestModel.isA(model3)).to.be.true;
+      expect(model.get('str')).to.equal('foo');
+      expect(model2.get('str')).to.not.exist;
+      expect(model.get('obj.deep.blah')).to.equal('blah');
+      expect(model3.get('obj.deep.blah')).to.not.exist;
+    });
+
+  });
+
+  describe('.has()', function () {
+
+    it('should return true if the model contains a value at the given path', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      expect(model.has('str')).to.be.true;
+      expect(model.has('obj.deep.blah')).to.be.true;
+    });
+
+  });
+
+  describe('.toJSON()', function () {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should except a virtuals option', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      model
+        .save()
+        .then(function (newModel) {
+          // console.log(newModel.toJSON({ virtuals: true }));
+        });
+    });
+
+    it('should except an extended option', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      model
+        .save()
+        .then(function (newModel) {
+          // console.log(newModel.toJSON({ extended: false }));
+        });
     });
 
   });
@@ -143,8 +151,9 @@ describe('Model', function () {
   describe('.validate()', function () {
 
     it('should reject promise if validation fails', function (done) {
-      var model = new FullTestModel({ str: '' });
-      model.validate()
+      var model = FullTestModel.create({});
+      model
+        .validate()
         .then(
           function () {
             expect(false).to.be.true;
@@ -157,8 +166,9 @@ describe('Model', function () {
     });
 
     it('should resolve promise if validation succeeds', function (done) {
-      var model = new FullTestModel({ str: 'bar' });
-      model.validate()
+      var model = FullTestModel.create({ str: 'bar' });
+      model
+        .validate()
         .then(function () {
           expect(true).to.be.true;
           done();
@@ -176,9 +186,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
-        str: 'test string',
-        obj: { foo: 'bar' }
+      model = FullTestModel.create({
+        str: 'foo',
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -193,54 +203,55 @@ describe('Model', function () {
     });
 
     it('should insert a new document', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          expect(model._etag).to.exist;
-          expect(model.isModified()).to.be.false;
+      var updatedModel;
+      model
+        .save()
+        .then(function (newModel) {
+          updatedModel = newModel;
+          expect(updatedModel.id).to.exist;
+          expect(updatedModel._etag).to.exist;
           return dozer.get('/db/mocha_test', { count: true })
-            .then(function (result) {
-              expect(result.count).to.equal(1);
-              return dozer.get('/db/mocha_test/' + model._id, { one: true });
-            })
-            .then(function (doc) {
-              expect(model._etag).to.equal(doc._etag);
-              expect(model._id.toString()).to.equal(doc._id.toString());
-              expect(model.bool).to.equal(doc.bool);
-              expect(model.date).to.equalDate(doc.date);
-              expect(model.num).to.equal(doc.num);
-              expect(model.obj.toObject({virtuals: false})).to.eql(doc.obj);
-              expect(model.str).to.equal(doc.str);
-              done();
-            });
+        })
+        .then(function (result) {
+          expect(result.count).to.equal(1);
+          return dozer.get('/db/mocha_test/' + updatedModel.id.toString(), { one: true });
+        })
+        .then(function (doc) {
+          expect(updatedModel._etag).to.equal(doc._etag);
+          expect(updatedModel.id.toString()).to.equal(doc._id.toString());
+          expect(updatedModel.bool).to.equal(doc.bool);
+          expect(updatedModel.date).to.equalDate(doc.date);
+          expect(updatedModel.num).to.equal(doc.num);
+          expect(updatedModel.obj.toObject()).to.eql(doc.obj);
+          expect(updatedModel.str).to.equal(doc.str);
+          done();
         })
         .done(null, done);
     });
 
     it('should update an existing document', function (done) {
-      var _id = model._id.toString(), _etag = model._etag;
-      model.str = 'test update';
-      expect(model.isModified()).to.be.true;
-      model.save()
-        .then(function () {
-          expect(model._id.toString()).to.equal(_id);
-          expect(model._etag).to.not.equal(_etag);
-          expect(model.isModified()).to.be.false;
-          return dozer.get('/db/mocha_test', { count: true })
-            .then(function (result) {
-              expect(result.count).to.equal(1);
-              return dozer.get('/db/mocha_test/' + model._id, { one: true });
-            })
-            .then(function (doc) {
-              expect(model._etag).to.equal(doc._etag);
-              expect(model._id.toString()).to.equal(doc._id.toString());
-              expect(model.bool).to.equal(doc.bool);
-              expect(model.date).to.equalDate(doc.date);
-              expect(model.num).to.equal(doc.num);
-              expect(model.obj.toObject({virtuals: false})).to.eql(doc.obj);
-              expect(model.str).to.equal(doc.str);
-              done();
-            });
+      var newModel, updatedModel;
+      model
+        .save()
+        .then(function (model) {
+          newModel = model;
+          return newModel.set('str', 'test update').save();
+        })
+        .then(function (model) {
+          updatedModel = model;
+          expect(updatedModel.id.toString()).to.equal(newModel.id.toString());
+          expect(updatedModel._etag).to.not.equal(newModel._etag);
+          return dozer.get('/db/mocha_test/' + updatedModel.id.toString(), { one: true });
+        })
+        .then(function (doc) {
+          expect(updatedModel._etag).to.equal(doc._etag);
+          expect(updatedModel.id.toString()).to.equal(doc._id.toString());
+          expect(updatedModel.bool).to.equal(doc.bool);
+          expect(updatedModel.date).to.equalDate(doc.date);
+          expect(updatedModel.num).to.equal(doc.num);
+          expect(updatedModel.obj.toObject()).to.eql(doc.obj);
+          expect(updatedModel.str).to.equal(doc.str);
+          done();
         })
         .done(null, done);
     });
@@ -251,9 +262,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
+      model = FullTestModel.create({
         str: 'test string',
-        obj: { foo: 'bar' }
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -268,15 +279,12 @@ describe('Model', function () {
     });
 
     it('should remove the document', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          return model.remove();
+      model
+        .save()
+        .then(function (updatedModel) {
+          return updatedModel.remove();
         })
         .then(function (result) {
-          expect(model._id).to.not.exist;
-          expect(model._etag).to.not.exist;
-          expect(model.isModified()).to.be.false;
           return dozer.get('/db/mocha_test', { count: true })
             .then(function (result) {
               expect(result.count).to.equal(0);
@@ -292,9 +300,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
+      model = FullTestModel.create({
         str: 'test string',
-        obj: { foo: 'bar' }
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -309,10 +317,10 @@ describe('Model', function () {
     });
 
     it('should return the count of objects', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          return FullTestModel.count({ _id: model._id });
+      model
+        .save()
+        .then(function (updatedModel) {
+          return FullTestModel.count({ _id: updatedModel.id });
         })
         .then(function (count) {
           expect(count).to.equal(1);
@@ -326,9 +334,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
+      model = FullTestModel.create({
         str: 'test string',
-        obj: { foo: 'bar' }
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -343,14 +351,13 @@ describe('Model', function () {
     });
 
     it('should return an array of objects', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          return FullTestModel.find({ _id: model._id });
+      model
+        .save()
+        .then(function (updatedModel) {
+          return FullTestModel.find({ _id: updatedModel.id });
         })
         .then(function (arr) {
           expect(arr.length).to.equal(1);
-          expect(arr[0]._id.toString()).to.equal(model._id.toString());
           done();
         })
         .done(null, done);
@@ -361,9 +368,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
+      model = FullTestModel.create({
         str: 'test string',
-        obj: { foo: 'bar' }
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -378,21 +385,22 @@ describe('Model', function () {
     });
 
     it('should return an object', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          return FullTestModel.findOne({ _id: model._id });
+      model
+        .save()
+        .then(function (updatedModel) {
+          return FullTestModel.findOne({ _id: updatedModel.id });
         })
         .then(function (doc) {
           expect(doc).to.exist;
-          expect(doc._id.toString()).to.equal(model._id.toString());
+          expect(Immutable.isImmutableType(doc, 'FullTestModel'));
           done();
         })
         .done(null, done);
     });
 
     it('should return null if no document is found', function (done) {
-      FullTestModel.findOne({ _id: 'asdfasdfasdf' })
+      FullTestModel
+        .findOne({ _id: 'asdfasdfasdf' })
         .then(function (doc) {
           expect(doc).to.not.exist;
           done();
@@ -406,9 +414,9 @@ describe('Model', function () {
     var model;
 
     before(function () {
-      model = new FullTestModel({
+      model = FullTestModel.create({
         str: 'test string',
-        obj: { foo: 'bar' }
+        obj: { prop1: 'bar' }
       });
     });
 
@@ -423,13 +431,15 @@ describe('Model', function () {
     });
 
     it('should remove a document', function (done) {
-      model.save()
-        .then(function () {
-          expect(model._id).to.exist;
-          return FullTestModel.remove({ _id: model._id });
+      var id;
+      model
+        .save()
+        .then(function (updatedModel) {
+          id = updatedModel.id;
+          return FullTestModel.remove({ _id: updatedModel.id });
         })
         .then(function () {
-          return dozer.get('/db/mocha_test', { query: { _id: model._id }, count: true });
+          return dozer.get('/db/mocha_test', { query: { _id: id }, count: true });
         })
         .then(function (result) {
           expect(result.count).to.equal(0);
@@ -445,34 +455,30 @@ describe('Model', function () {
       var ModelA = Model.define({
         name: 'ModelA',
         abstract: true,
+        collectionUri: '/db/mocha_test',
         properties: {
-          'strA': { type: 'string' }
+          _type: { type: 'string', enum: ['A', 'B'], default: 'A'},
+          strA: { type: 'string' }
+        },
+        methods: {
+          blah: function () {
+            return 'blah';
+          }
         }
       });
-      ModelA.foo = function () {
-        return 'foo';
-      };
-      ModelA.prototype.blah = function () {
-        return 'blah';
-      };
       var ModelB = ModelA.extend({
         name: 'ModelB',
-        collectionUri: '/db/modelb',
+        where: { _type: 'B' },
         properties: {
-          'strB': { type: 'string' }
+          _type: { type: 'string', default: 'B', valid: 'B' },
+          strB: { type: 'string' }
         }
       });
-      ModelB.bar = function () {
-        return 'bar';
-      };
-      var myModelB = new ModelB({
+      var myModelB = ModelB.create({
         strA: 'abc',
         strB: '123'
       });
-      expect(myModelB).to.be.an.instanceof(ModelA);
-      expect(ModelB.bar()).to.equal('bar');
       expect(myModelB.strB).to.equal('123');
-      expect(ModelB.foo()).to.equal('foo');
       expect(myModelB.strA).to.equal('abc');
       expect(myModelB.blah()).to.equal('blah');
     });
