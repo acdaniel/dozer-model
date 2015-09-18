@@ -110,6 +110,48 @@ describe('Model', function () {
 
   });
 
+  describe('.getModifiedPaths()', function () {
+
+    it('should return an array of modified paths', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      var m = model
+        .set('obj.deep.blah', 'foo')
+        .set('arr', [1, 2, 3])
+        .set('bool', true);
+      expect(m.getModifiedPaths()).to.eql(['obj.deep.blah', 'arr', 'bool']);
+      m = m.set({ obj: { prop1: 'a', prop2: 'b' } }).set(['arr', 0], 4);
+      expect(m.getModifiedPaths()).to.eql(['arr', 'bool', 'obj']);
+    });
+
+  });
+
+  describe('.isModified()', function () {
+
+    it('should return true if the given path is modified', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      var m = model.set('arr', [1, 2, 3]);
+      expect(m.isModified('arr')).to.be.true;
+      expect(m.isModified('str')).to.be.false;
+    });
+
+    it('should return true if no path is given and the object has been modified', function () {
+      var model = FullTestModel.create({
+        str: 'foo',
+        obj: { deep: { blah: 'blah' } }
+      });
+      expect(model.isModified()).to.be.false;
+      var m = model.set('arr', [1, 2, 3]);
+      expect(m.isModified()).to.be.true;
+    });
+
+  });
+
   describe('.toJSON()', function () {
 
     after(function (done) {
