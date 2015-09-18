@@ -1,5 +1,6 @@
 var chai = require('chai');
 var dozer = require('dozer-client');
+var q = require('q');
 
 chai.use(require('chai-datetime'));
 var expect = chai.expect;
@@ -35,7 +36,7 @@ describe('Model', function () {
 
   });
 
-  describe('.get', function () {
+  describe('.get()', function () {
 
     it('should return a value at the given path', function () {
       var model = FullTestModel.create({
@@ -110,7 +111,88 @@ describe('Model', function () {
 
   });
 
-  describe('.isNew', function (done) {
+  describe('.is()', function () {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    // TODO split this up into multiple tests
+    it('should return true if both objects reference the same doc', function (done) {
+      var obj = null;
+      var modelA = Model.define({
+        name: 'ModelA',
+        collectionUri: '/db/mocha_test',
+        properties: {
+          str: { type: 'string' }
+        }
+      }).create({ str: 'foo'});
+      var modelB = Model.define({
+        name: 'ModelB',
+        collectionUri: '/db/mocha_test',
+        properties: {
+          str: { type: 'string' }
+        }
+      }).create({ str: 'foo'});
+      expect(modelA.is(obj)).to.be.false;
+      expect(modelA.is(modelB)).to.be.false;
+      var m = modelA;
+      expect(modelA.is(m)).to.be.true;
+      m = modelA.set('str', 'blah');
+      expect(modelA.is(m)).to.be.false;
+      modelA.save()
+        .then(function (modelA2) {
+          expect(modelA.is(modelA2)).to.be.false;
+          var m2 = modelA2.set('str', 'bar');
+          expect(modelA2.is(m2)).to.be.true;
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
+  describe('.equals()', function () {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should return true if both objects reference the same doc and version', function (done) {
+      var obj = null;
+      var modelA = Model.define({
+        name: 'ModelA',
+        collectionUri: '/db/mocha_test',
+        properties: {
+          str: { type: 'string' }
+        }
+      }).create({ str: 'foo'});
+      var m = modelA.set('str', 'blah');
+      expect(modelA.equals(m)).to.be.false;
+      modelA.save()
+        .then(function (modelA2) {
+          var m2 = modelA2.set('num', 10);
+          expect(modelA2.equals(m2)).to.be.false;
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
+  describe('.isNew()', function (done) {
 
     after(function (done) {
       dozer.del('/db/mocha_test', { query: {}, multiple: true })
@@ -165,6 +247,10 @@ describe('Model', function () {
       var m = model.set('arr', [1, 2, 3]);
       expect(m.isModified('arr')).to.be.true;
       expect(m.isModified('str')).to.be.false;
+      var m2 = model.set('obj.deep.blah', 'boo');
+      expect(m2.isModified('obj')).to.be.true;
+      expect(m2.isModified('obj.deep')).to.be.true;
+      expect(m2.isModified('obj.deep.blah')).to.be.true;
     });
 
     it('should return true if no path is given and the object has been modified', function () {
@@ -472,6 +558,85 @@ describe('Model', function () {
         .findOne({ _id: 'asdfasdfasdf' })
         .then(function (doc) {
           expect(doc).to.not.exist;
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
+  describe('.distinct()', function () {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should return distinct key values', function (done) {
+      var model = FullTestModel.create({
+        str: 'test string'
+      });
+      var model2 = FullTestModel.create({
+        str: 'another test string'
+      });
+      var model3 = FullTestModel.create({
+        str: 'test string'
+      });
+      q.all([model.save(), model2.save(), model3.save()])
+        .then(function (results) {
+          return FullTestModel.distinct('str');
+        })
+        .then(function (results) {
+          expect(results).to.contain('test string', 'another test string');
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
+  describe('.aggregate()', function () {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should return results of aggregate pipeline', function (done) {
+      var model = FullTestModel.create({
+        str: 'test string'
+      });
+      var model2 = FullTestModel.create({
+        str: 'another test string'
+      });
+      var model3 = FullTestModel.create({
+        str: 'test string'
+      });
+      q.all([model.save(), model2.save(), model3.save()])
+        .then(function (results) {
+          return FullTestModel.aggregate([
+            { $group: { _id: '$str', count: { $sum: 1 } } }
+          ]);
+        })
+        .then(function (results) {
+          expect(results.length).to.equal(2);
+          results.forEach(function (item) {
+            expect(item).to.contain.all.keys('_id', 'count');
+            expect(item).to.satisfy(function (val) {
+              return (val._id === 'test string' && val.count === 2) ||
+                (val._id === 'another test string' && val.count === 1);
+            });
+          });
           done();
         })
         .done(null, done);
