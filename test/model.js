@@ -683,7 +683,7 @@ describe('Model', function () {
     });
   });
 
-  describe('.extend', function () {
+  describe('.extend()', function () {
 
     it('should allow extending of a model', function () {
       var ModelA = Model.define({
@@ -692,7 +692,7 @@ describe('Model', function () {
         collectionUri: '/db/mocha_test',
         properties: {
           _type: { type: 'string', enum: ['A', 'B'], default: 'A'},
-          strA: { type: 'string' }
+          strA: { type: 'string', default: 'A' }
         },
         methods: {
           blah: function () {
@@ -705,9 +705,12 @@ describe('Model', function () {
         where: { _type: 'B' },
         properties: {
           _type: { type: 'string', default: 'B', valid: 'B' },
-          strB: { type: 'string' }
+          strB: { type: 'string', default: 'B' }
         }
       });
+      var myModelA = ModelA.create({});
+      expect(myModelA.strA).to.equal('A');
+      expect(myModelA.strB).to.not.exist;
       var myModelB = ModelB.create({
         strA: 'abc',
         strB: '123'
