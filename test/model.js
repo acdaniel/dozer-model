@@ -71,6 +71,7 @@ describe('Model', function () {
         obj: { deep: { blah: 'blah' } }
       });
       expect(FullTestModel.isA(model2)).to.be.true;
+      expect(model2.fooString('str is set to {str}')).to.equal('str is set to foo');
       expect(model.get('str')).to.not.exist;
       expect(model.get('obj.deep.blah')).to.not.exist;
       expect(model2.get('str')).to.equal('foo');
