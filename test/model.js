@@ -110,6 +110,33 @@ describe('Model', function () {
 
   });
 
+  describe('.isNew', function (done) {
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should return true if the model is new', function (done) {
+      var model = FullTestModel.create({
+        str: 'foo'
+      });
+      expect(model.isNew()).to.be.true;
+      model.save()
+        .then(function (model2) {
+          expect(model2.isNew()).to.be.false;
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
   describe('.getModifiedPaths()', function () {
 
     it('should return an array of modified paths', function () {
