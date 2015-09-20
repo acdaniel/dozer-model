@@ -6,6 +6,9 @@ var expect = chai.expect;
 describe('Immutable', function () {
 
   var Immutable = require('../lib/immutable');
+  Immutable.use('array', require('../lib/array'));
+  Immutable.use(Date, require('../lib/date'));
+  Immutable.use(require('../lib/object'));
 
   var complexDef = {
     properties: {
@@ -89,7 +92,7 @@ describe('Immutable', function () {
     });
 
     it('should return true for custom defined types', function () {
-      var obj = Immutable.create({ x: 0, y: 0 }, { name: 'Point' });
+      var obj = Immutable.create({ x: 0, y: 0 }, { definition: { name: 'Point' } });
       expect(Immutable.isImmutableType(obj, 'Point')).to.be.true;
     });
 
@@ -120,7 +123,7 @@ describe('Immutable', function () {
     });
 
     it('should return an immutable defined by definition', function () {
-      var obj = Immutable.create({ obj: { foo: 'a' } }, complexDef);
+      var obj = Immutable.create({ obj: { foo: 'a' } }, { definition: complexDef });
       expect(Immutable.isImmutable(obj)).to.be.true;
       expect(obj.obj.foo).to.equal('a');
       expect(obj.str).to.equal('');
