@@ -364,17 +364,17 @@ describe('Model', function () {
         .save()
         .then(function (newModel) {
           updatedModel = newModel;
-          expect(updatedModel.id).to.exist;
+          expect(updatedModel._id).to.exist;
           expect(updatedModel._etag).to.exist;
           return dozer.get('/db/mocha_test', { count: true })
         })
         .then(function (result) {
           expect(result.count).to.equal(1);
-          return dozer.get('/db/mocha_test/' + updatedModel.id.toString(), { one: true });
+          return dozer.get('/db/mocha_test/' + updatedModel._id.toString(), { one: true });
         })
         .then(function (doc) {
           expect(updatedModel._etag).to.equal(doc._etag);
-          expect(updatedModel.id.toString()).to.equal(doc._id.toString());
+          expect(updatedModel._id.toString()).to.equal(doc._id.toString());
           expect(updatedModel.bool).to.equal(doc.bool);
           expect(updatedModel.date).to.equalDate(doc.date);
           expect(updatedModel.num).to.equal(doc.num);
@@ -395,13 +395,13 @@ describe('Model', function () {
         })
         .then(function (model) {
           updatedModel = model;
-          expect(updatedModel.id.toString()).to.equal(newModel.id.toString());
+          expect(updatedModel._id.toString()).to.equal(newModel._id.toString());
           expect(updatedModel._etag).to.not.equal(newModel._etag);
-          return dozer.get('/db/mocha_test/' + updatedModel.id.toString(), { one: true });
+          return dozer.get('/db/mocha_test/' + updatedModel._id.toString(), { one: true });
         })
         .then(function (doc) {
           expect(updatedModel._etag).to.equal(doc._etag);
-          expect(updatedModel.id.toString()).to.equal(doc._id.toString());
+          expect(updatedModel._id.toString()).to.equal(doc._id.toString());
           expect(updatedModel.bool).to.equal(doc.bool);
           expect(updatedModel.date).to.equalDate(doc.date);
           expect(updatedModel.num).to.equal(doc.num);
@@ -476,7 +476,7 @@ describe('Model', function () {
       model
         .save()
         .then(function (updatedModel) {
-          return FullTestModel.count({ _id: updatedModel.id });
+          return FullTestModel.count({ _id: updatedModel._id });
         })
         .then(function (count) {
           expect(count).to.equal(1);
@@ -510,7 +510,7 @@ describe('Model', function () {
       model
         .save()
         .then(function (updatedModel) {
-          return FullTestModel.find({ _id: updatedModel.id });
+          return FullTestModel.find({ _id: updatedModel._id });
         })
         .then(function (arr) {
           expect(arr.length).to.equal(1);
@@ -544,7 +544,7 @@ describe('Model', function () {
       model
         .save()
         .then(function (updatedModel) {
-          return FullTestModel.findOne({ _id: updatedModel.id });
+          return FullTestModel.findOne({ _id: updatedModel._id });
         })
         .then(function (doc) {
           expect(doc).to.exist;
@@ -670,8 +670,8 @@ describe('Model', function () {
       model
         .save()
         .then(function (updatedModel) {
-          id = updatedModel.id;
-          return FullTestModel.remove({ _id: updatedModel.id });
+          id = updatedModel._id;
+          return FullTestModel.remove({ _id: updatedModel._id });
         })
         .then(function () {
           return dozer.get('/db/mocha_test', { query: { _id: id }, count: true });
