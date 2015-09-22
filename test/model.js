@@ -566,6 +566,82 @@ describe('Model', function () {
 
   });
 
+  describe('.update()', function () {
+
+    before(function (done) {
+      q.all([
+        FullTestModel.create({ str: 'foo' }).save(),
+        FullTestModel.create({ str: 'bar' }).save(),
+        FullTestModel.create({ str: 'blah' }).save()
+      ])
+      .then(function (models) {
+        done();
+      })
+      .catch(function (err) {
+        done(err);
+      });
+    });
+
+    after(function (done) {
+      dozer.del('/db/mocha_test', { query: {}, multiple: true })
+        .then(function () {
+          done();
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    });
+
+    it('should partial update a single doc', function (done) {
+      FullTestModel.update({}, { any: 'boo' })
+        .then(function (result) {
+          expect(result.matchedCount).to.equal(1);
+          expect(result.modifiedCount).to.equal(1);
+          return FullTestModel.findOne({ str: 'foo' });
+        })
+        .then(function (doc) {
+          expect(doc.str).to.equal('foo');
+          expect(doc.any).to.equal('boo');
+          done();
+        })
+        .done(null, done);
+    });
+
+    it('should partial update all docs', function (done) {
+      FullTestModel.update({}, { any: 'any' }, { multiple: true })
+        .then(function (result) {
+          expect(result.matchedCount).to.equal(3);
+          expect(result.modifiedCount).to.equal(3);
+          return FullTestModel.find({});
+        })
+        .then(function (docs) {
+          expect(docs[0].str).to.equal('foo');
+          expect(docs[0].any).to.equal('any');
+          expect(docs[1].str).to.equal('bar');
+          expect(docs[1].any).to.equal('any');
+          expect(docs[2].str).to.equal('blah');
+          expect(docs[2].any).to.equal('any');
+          done();
+        })
+        .done(null, done);
+    });
+
+    it('should replace single doc', function (done) {
+      FullTestModel.update({}, { arr: ['a', 'b', 'c'] }, { autoSet: false })
+        .then(function (result) {
+          expect(result.matchedCount).to.equal(1);
+          expect(result.modifiedCount).to.equal(1);
+          return FullTestModel.find({ arr: ['a', 'b', 'c']});
+        })
+        .then(function (doc) {
+          expect(doc.str).to.not.exist;
+          done();
+        })
+        .done(null, done);
+    });
+
+  });
+
   describe('.distinct()', function () {
 
     after(function (done) {
