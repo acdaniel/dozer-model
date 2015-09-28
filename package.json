@@ -1,6 +1,6 @@
 {
   "name": "dozer-model",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "Model for Dozer Rest API",
   "main": "lib/index.js",
   "scripts": {
